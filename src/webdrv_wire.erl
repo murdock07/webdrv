@@ -81,9 +81,8 @@ start_session(Opts, Capability) ->
   start_session(Opts, Capability, null).
 
 -spec start_session(#webdrv_opts{}, capability(), capability()) -> request_res().
-start_session(Opts, Desired, Required) ->
-  Params = [{desiredCapabilities, webdrv_cap:to_json(Desired)},
-            {requiredCapabilities, webdrv_cap:to_json(Required)}],
+start_session(Opts, Desired, _Required) ->
+  Params = #{capabilities => Desired},
   do_post_cmd(Opts, "session", Params).
 
 -spec get_sessions(#webdrv_opts{}) -> request_res().
@@ -412,7 +411,7 @@ do_get_scmd(Opts, Cmd) ->
 
 do_post_cmd(Opts, Cmd, Params) ->
   URL = url(Opts) ++ Cmd,
-  do_post(Opts, URL, {obj, Params}).
+  do_post(Opts, URL, Params).
 
 do_get_cmd(Opts, Cmd) ->
   do_get(Opts, url(Opts) ++ Cmd).
@@ -426,8 +425,10 @@ do_delete_cmd(Opts, Cmd) ->
 %% HTML / HTTP functions
 do_post(Opts, Url, JSONParams) ->
   {ok, {_, _, Host, Port, _, _}} = http_uri:parse(Url),
-  JSON = json:encode(JSONParams),
-  Len  = length(JSON),
+  JSON = jsx:encode(JSONParams),
+  io:format(user, "URL: ~n~p~nOpts: ~n~p~nJSONParams: ~n~p~nJSON: ~n~p~n",
+    [Url, Opts, JSONParams, binary_to_list(JSON)]),
+  Len  = length(binary_to_list(JSON)),
   request(Opts, post,
           {Url,
            [{"Content-Length", integer_to_list(Len)},
@@ -463,6 +464,7 @@ request(Opts, Method, Request) ->
   end.
 
 check_json_response(JsonTerm) ->
+  io:format(user, "check_json_response: ~n~p~n", [JsonTerm]),
   case parse_response_json(JsonTerm) of
     {0, SessId, Value} ->
       {ok, SessId, Value};
@@ -508,18 +510,20 @@ json_decode(Body) ->
   end.
 
 parse_response_json(JSON) ->
+  io:format(user, "parse_response_json: ~n~p~n", [JSON]),
   case JSON of
     {obj, Dict} ->
-      SessId = proplists:get_value("sessionId", Dict, null),
-      Status = proplists:get_value("status", Dict, -1),
       Value  = proplists:get_value("value", Dict, none),
-      if Status < 0 ->
-          {error, "JSON object contained no status field"};
-         Value == none ->
-          {error, "JSON object contained no value"};
-         true ->
-          {Status, SessId, Value}
-      end;
+      SessId = proplists:get_value("sessionId", Value, null),
+      Status = proplists:get_value("status", Dict, -1),
+      io:format(user, "parse_response_json: ~n~p~n~p~n~p~n", [SessId,Status,Value]),
+      %if Status < 0 ->
+      %    {error, "JSON object contained no status field"};
+      %   Value == none ->
+      %    {error, "JSON object contained no value"};
+      %   true ->
+          {0, SessId, Value};
+      %end;
     _ ->
       {error, "JSON response is not of object type"}
   end.

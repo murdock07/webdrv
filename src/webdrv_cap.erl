@@ -34,7 +34,6 @@
 -include("../include/webdrv.hrl").
 
 -export([default/0, default_browser/1,
-         to_json/1,
          default_firefox/0, default_chrome/0, default_htmlunit/0, 
          default_safari/1]).
 
@@ -70,15 +69,4 @@ default_firefox() ->
 default_safari(Device) ->
   (default())#capability{ browserName = <<"Safari">>, device = Device }.
 
-%% @doc Convert a capability (possibly <tt>null</tt>) to JSON format. Function is
-%% idempotent, i.e. converting an already converted object is fine.
--spec to_json(capability()) -> jsonobj() | null.
-to_json(C = #capability{}) ->
-  {obj,
-   [ {Field, Arg1} || {Field, Arg1, Arg2} <- lists:zip3(record_info(fields, capability),
-                                                        tl(tuple_to_list(C)),
-                                                        tl(tuple_to_list(#capability{}))),
-                      (Arg1 =/= Arg2 orelse Field == javascriptEnabled)]};
-to_json(Obj = {obj, _Any}) -> Obj;
-to_json(null) -> null.
 
