@@ -450,6 +450,7 @@ do_delete(Opts, URL) ->
 request(Opts, Method, Request) ->
   %% io:format("REQ: ~p\n", [{Method, Request}]),
   Res = httpc_request_bug_fix(Opts, Method, Request),
+  io:format(user, "request: ~n~p~n", [Res]),
   case parse_httpc_result(Res) of
     {error, {txt, Err}} ->
       {html_error, Err};
@@ -510,13 +511,17 @@ json_decode(Body) ->
   end.
 
 parse_response_json(JSON) ->
-  io:format(user, "parse_response_json: ~n~p~n", [JSON]),
+  io:format(user, "parse_response_json - 1: ~n~p~n", [JSON]),
   case JSON of
     {obj, Dict} ->
-      Value  = proplists:get_value("value", Dict, none),
+      Value = 
+        case proplists:get_value("value", Dict, none) of
+          null -> [];
+          {obj, V} -> V
+        end,
       SessId = proplists:get_value("sessionId", Value, null),
       Status = proplists:get_value("status", Dict, -1),
-      io:format(user, "parse_response_json: ~n~p~n~p~n~p~n", [SessId,Status,Value]),
+      io:format(user, "parse_response_json - 2: ~n~p~n~p~n~p~n", [SessId,Status,Value]),
       %if Status < 0 ->
       %    {error, "JSON object contained no status field"};
       %   Value == none ->
